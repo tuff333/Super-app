@@ -1,0 +1,9 @@
+{
+  "name": "Nirnay Pro Super App",
+  "description": "A futuristic ecosystem featuring Nirnay Pro Gujarati Calendar with AI Panchang & Voice Search, Secure Vault, Office Hub with AI Document Tools, and AI Nexus.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "geolocation"
+  ]
+}
