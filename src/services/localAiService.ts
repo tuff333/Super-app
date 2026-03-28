@@ -1,4 +1,4 @@
-import { PanchangData } from './types';
+import { PanchangData } from '../types';
 
 export const getLocalPanchangSummary = (panchang: PanchangData): string => {
   const summaries: Record<string, string> = {

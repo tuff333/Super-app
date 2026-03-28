@@ -348,52 +348,55 @@ export default function SuperDashboard({ onNavigate }: SuperDashboardProps) {
               ref={provided.innerRef}
               className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
             >
-              {widgets.map((widget, index) => (
-                <Draggable 
-                  key={widget.id} 
-                  draggableId={widget.id} 
-                  index={index}
-                  isDragDisabled={!isEditMode}
-                >
-                  {(provided, snapshot) => (
-                    <div
-                      ref={provided.innerRef}
-                      {...provided.draggableProps}
-                      className={cn(
-                        "relative group",
-                        widget.size === 'large' ? "md:col-span-2 lg:col-span-2" : "col-span-1",
-                        snapshot.isDragging ? "z-50" : ""
-                      )}
-                    >
-                      {isEditMode && (
-                        <div className="absolute -top-3 -right-3 z-20 flex gap-2">
-                          <div 
-                            {...provided.dragHandleProps}
-                            className="p-2 bg-white rounded-full shadow-lg border border-slate-100 text-slate-400 cursor-grab active:cursor-grabbing"
-                          >
-                            <GripVertical size={14} />
-                          </div>
-                          <button 
-                            onClick={() => removeWidget(widget.id)}
-                            className="p-2 bg-white rounded-full shadow-lg border border-slate-100 text-rose-500 hover:bg-rose-50"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        </div>
-                      )}
-                      <motion.div
-                        layout
+              {widgets.map((widget, index) => {
+                const DraggableComp = Draggable as any;
+                return (
+                  <DraggableComp 
+                    key={widget.id} 
+                    draggableId={widget.id} 
+                    index={index}
+                    isDragDisabled={!isEditMode}
+                  >
+                    {(provided: any, snapshot: any) => (
+                      <div
+                        ref={provided.innerRef}
+                        {...provided.draggableProps}
                         className={cn(
-                          "h-full transition-all",
-                          isEditMode ? "scale-[0.98] ring-2 ring-indigo-500/20 rounded-[2.5rem]" : ""
+                          "relative group",
+                          widget.size === 'large' ? "md:col-span-2 lg:col-span-2" : "col-span-1",
+                          snapshot.isDragging ? "z-50" : ""
                         )}
                       >
-                        {renderWidgetContent(widget)}
-                      </motion.div>
-                    </div>
-                  )}
-                </Draggable>
-              ))}
+                        {isEditMode && (
+                          <div className="absolute -top-3 -right-3 z-20 flex gap-2">
+                            <div 
+                              {...provided.dragHandleProps}
+                              className="p-2 bg-white rounded-full shadow-lg border border-slate-100 text-slate-400 cursor-grab active:cursor-grabbing"
+                            >
+                              <GripVertical size={14} />
+                            </div>
+                            <button 
+                              onClick={() => removeWidget(widget.id)}
+                              className="p-2 bg-white rounded-full shadow-lg border border-slate-100 text-rose-500 hover:bg-rose-50"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        )}
+                        <motion.div
+                          layout
+                          className={cn(
+                            "h-full transition-all",
+                            isEditMode ? "scale-[0.98] ring-2 ring-indigo-500/20 rounded-[2.5rem]" : ""
+                          )}
+                        >
+                          {renderWidgetContent(widget)}
+                        </motion.div>
+                      </div>
+                    )}
+                  </DraggableComp>
+                );
+              })}
               {provided.placeholder}
             </div>
           )}
