@@ -177,10 +177,10 @@ export default function NirnayWidget({ onNavigate }: NirnayWidgetProps) {
           {weather && (
             <div className="text-right">
               <div className="flex items-center justify-end gap-2 text-slate-800">
-                <span className="text-xl font-black">{Math.round(weather.temp.day)}°</span>
-                {getWeatherIcon(weather.weather[0].main)}
+                <span className="text-xl font-black">{Math.round(weather.maxTemp)}°</span>
+                <span className="text-xl">{getWeatherIcon(weather.weatherCode)}</span>
               </div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{weather.weather[0].description}</p>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{weather.condition}</p>
             </div>
           )}
         </div>
