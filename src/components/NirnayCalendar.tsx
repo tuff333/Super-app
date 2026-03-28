@@ -73,107 +73,9 @@ import { fetchWeather, searchLocations, DailyForecast, HourlyForecast, getWeathe
 import { fetchDailyQuote, Quote } from '../services/quoteService';
 import { fetchHolidays, Holiday } from '../services/holidayService';
 import { fetchDateFact } from '../services/factService';
+import DrawingCanvas from './DrawingCanvas';
+import { getLocalPanchangSummary, getLocalQuoteTranslation } from '../services/localAiService';
 
-function DrawingCanvas({ onSave, onCancel, initialData }: { onSave: (data: string) => void, onCancel: () => void, initialData?: string }) {
-  const canvasRef = React.useRef<HTMLCanvasElement>(null);
-  const [isDrawing, setIsDrawing] = useState(false);
-  const [color, setColor] = useState('#4f46e5');
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    const rect = canvas.parentElement?.getBoundingClientRect();
-    if (rect) {
-      canvas.width = rect.width;
-      canvas.height = rect.height;
-    }
-
-    if (initialData) {
-      const img = new Image();
-      img.onload = () => ctx.drawImage(img, 0, 0);
-      img.src = initialData;
-    }
-
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    ctx.lineWidth = 3;
-    ctx.strokeStyle = color;
-  }, [initialData, color]);
-
-  const startDrawing = (e: React.MouseEvent | React.TouchEvent) => {
-    setIsDrawing(true);
-    draw(e);
-  };
-
-  const stopDrawing = () => {
-    setIsDrawing(false);
-    const canvas = canvasRef.current;
-    if (canvas) {
-      const ctx = canvas.getContext('2d');
-      ctx?.beginPath();
-    }
-  };
-
-  const draw = (e: React.MouseEvent | React.TouchEvent) => {
-    if (!isDrawing) return;
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    const rect = canvas.getBoundingClientRect();
-    const x = ('touches' in e) ? (e as React.TouchEvent).touches[0].clientX - rect.left : (e as React.MouseEvent).clientX - rect.left;
-    const y = ('touches' in e) ? (e as React.TouchEvent).touches[0].clientY - rect.top : (e as React.MouseEvent).clientY - rect.top;
-
-    ctx.lineTo(x, y);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-  };
-
-  const clear = () => {
-    const canvas = canvasRef.current;
-    if (canvas) {
-      const ctx = canvas.getContext('2d');
-      ctx?.clearRect(0, 0, canvas.width, canvas.height);
-    }
-  };
-
-  return (
-    <div className="flex-1 flex flex-col bg-slate-50 rounded-2xl overflow-hidden border-2 border-orange-200 min-h-[250px]">
-      <div className="flex items-center justify-between p-2 bg-white border-b border-slate-100">
-        <div className="flex gap-2">
-          {['#4f46e5', '#f97316', '#10b981', '#ef4444', '#000000'].map(c => (
-            <button 
-              key={c} 
-              onClick={() => setColor(c)}
-              className={cn("w-6 h-6 rounded-full border-2", color === c ? "border-slate-900" : "border-transparent")}
-              style={{ backgroundColor: c }}
-            />
-          ))}
-        </div>
-        <div className="flex gap-2">
-          <button onClick={clear} className="p-1.5 text-slate-400 hover:text-slate-600" title="Clear"><Eraser size={16} /></button>
-          <button onClick={() => onSave(canvasRef.current?.toDataURL() || '')} className="p-1.5 text-emerald-600 hover:text-emerald-700" title="Save"><Save size={16} /></button>
-          <button onClick={onCancel} className="p-1.5 text-rose-500 hover:text-rose-600" title="Cancel"><Trash2 size={16} /></button>
-        </div>
-      </div>
-      <canvas 
-        ref={canvasRef}
-        onMouseDown={startDrawing}
-        onMouseUp={stopDrawing}
-        onMouseMove={draw}
-        onTouchStart={startDrawing}
-        onTouchEnd={stopDrawing}
-        onTouchMove={draw}
-        className="flex-1 cursor-crosshair touch-none bg-white"
-      />
-    </div>
-  );
-}
 
 interface Note {
   id: string;
@@ -374,17 +276,23 @@ export default function NirnayCalendar({ language = 'en' }: { language?: Languag
     setIsGeneratingSummary(true);
     try {
       const panchang = getPanchangForDate(selectedDate);
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: `Generate a short, insightful daily panchang summary for this data: ${JSON.stringify(panchang)}. 
-        Include: Tithi, Nakshatra, and a "Good time for..." or "Avoid..." advice. 
-        Language: ${language === 'gu' ? 'Gujarati' : 'English'}. 
-        Keep it under 3 sentences.`,
-      });
-      setAiSummary(response.text || null);
+      if (navigator.onLine && process.env.GEMINI_API_KEY) {
+        const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+        const response = await ai.models.generateContent({
+          model: "gemini-3-flash-preview",
+          contents: `Generate a short, insightful daily panchang summary for this data: ${JSON.stringify(panchang)}. 
+          Include: Tithi, Nakshatra, and a "Good time for..." or "Avoid..." advice. 
+          Language: ${language === 'gu' ? 'Gujarati' : 'English'}. 
+          Keep it under 3 sentences.`,
+        });
+        setAiSummary(response.text || getLocalPanchangSummary(panchang));
+      } else {
+        setAiSummary(getLocalPanchangSummary(panchang));
+      }
     } catch (error) {
       console.error("Failed to generate AI summary", error);
+      const panchang = getPanchangForDate(selectedDate);
+      setAiSummary(getLocalPanchangSummary(panchang));
     } finally {
       setIsGeneratingSummary(false);
     }
@@ -397,14 +305,19 @@ export default function NirnayCalendar({ language = 'en' }: { language?: Languag
       
       if (q && language !== 'gu') {
         try {
-          const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-          const response = await ai.models.generateContent({
-            model: "gemini-3-flash-preview",
-            contents: `Translate this Gujarati quote to ${language === 'en' ? 'English' : language}: "${q.gujaratiContent}"`,
-          });
-          setTranslatedQuote(response.text || null);
+          if (navigator.onLine && process.env.GEMINI_API_KEY) {
+            const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+            const response = await ai.models.generateContent({
+              model: "gemini-3-flash-preview",
+              contents: `Translate this Gujarati quote to ${language === 'en' ? 'English' : language}: "${q.gujaratiContent}"`,
+            });
+            setTranslatedQuote(response.text || getLocalQuoteTranslation(q.gujaratiContent, language));
+          } else {
+            setTranslatedQuote(getLocalQuoteTranslation(q.gujaratiContent, language));
+          }
         } catch (error) {
           console.error("Failed to translate quote", error);
+          setTranslatedQuote(getLocalQuoteTranslation(q.gujaratiContent, language));
         }
       }
 

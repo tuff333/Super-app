@@ -94,3 +94,47 @@ export async function performAISearch(query: string): Promise<SearchResult[]> {
 
   return offlineResults.slice(0, 5);
 }
+
+export async function getAIResponse(query: string): Promise<string> {
+  if (!query) return "How can I help you today?";
+
+  // If API key is present, try real AI response
+  if (process.env.GEMINI_API_KEY) {
+    try {
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: query,
+        config: {
+          systemInstruction: "You are AI Nexus, the central intelligence of a Super App. You have access to Nirnay Calendar (Panchang), Secure Vault, Office Hub, CRM Hub, GlobeTrot, Budgeted, and Spiritual Hub. Provide helpful, concise answers. If the user asks about app features, guide them to the relevant module. Use 'Jay Swaminarayan' as a greeting.",
+        }
+      });
+      return response.text || "I'm sorry, I couldn't process that.";
+    } catch (error) {
+      console.error("AI Response Error, falling back to offline:", error);
+    }
+  }
+
+  // Offline Fallback - Simple Rule-based Responses
+  const lowerQuery = query.toLowerCase();
+
+  if (lowerQuery.includes('panchang') || lowerQuery.includes('tithi') || lowerQuery.includes('ekadashi')) {
+    return "Today is a great day to check the Nirnay Calendar. You can find the current Tithi, Choghadiya, and upcoming Ekadashi dates there.";
+  }
+  if (lowerQuery.includes('netflix')) {
+    return "I found two entries for Netflix: your login credentials in SecureVault and your subscription details in Budgeted.";
+  }
+  if (lowerQuery.includes('trip') || lowerQuery.includes('india') || lowerQuery.includes('travel')) {
+    return "Planning a trip? GlobeTrot can help you manage your itinerary, check world clocks, and track your passport status.";
+  }
+  if (lowerQuery.includes('budget') || lowerQuery.includes('expense') || lowerQuery.includes('money')) {
+    return "You can track all your expenses and set financial goals in the Budgeted module.";
+  }
+  if (lowerQuery.includes('vachanamrut') || lowerQuery.includes('spiritual')) {
+    return "The Spiritual Hub contains Vachanamrut and Swamini Vato for your daily study and reflection.";
+  }
+  if (lowerQuery.includes('hello') || lowerQuery.includes('hi') || lowerQuery.includes('jay swaminarayan')) {
+    return "Jay Swaminarayan! I'm your AI Nexus assistant. How can I help you manage your ecosystem today?";
+  }
+
+  return "I'm currently in Offline Mode. I can help with basic queries about your app modules like Calendar, Vault, Budget, and Spiritual Hub. For more complex reasoning, please connect to the internet.";
+}

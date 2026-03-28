@@ -43,9 +43,12 @@ import SpiritualHub from './components/SpiritualHub';
 import PDFTools from './components/PDFTools';
 import { performAISearch, SearchResult } from './services/aiSearchService';
 
+import GlobalSearch from './components/GlobalSearch';
+import { Home, LayoutGrid, Search as SearchIcon, User } from 'lucide-react';
+
 export default function App() {
   const [activeModule, setActiveModule] = useState<AppModule>('dashboard');
-  const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 768);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [language, setLanguage] = useState<Language>('en');
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -56,6 +59,17 @@ export default function App() {
   const [highlightedSetting, setHighlightedSetting] = useState<string | null>(null);
 
   const t = translations[language];
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        setIsSearchOpen(true);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   React.useEffect(() => {
     if (darkMode) {
@@ -125,6 +139,14 @@ export default function App() {
         <div className="absolute -bottom-[10%] left-[20%] w-[45%] h-[45%] bg-emerald-500/5 blur-[120px] animate-pulse delay-1000"></div>
       </div>
 
+      {/* Global Search Component */}
+      <GlobalSearch 
+        isOpen={isSearchOpen} 
+        onClose={() => setIsSearchOpen(false)} 
+        onNavigate={setActiveModule}
+        darkMode={darkMode}
+      />
+
       {/* Mobile Sidebar Backdrop */}
       <AnimatePresence>
         {isSidebarOpen && window.innerWidth < 768 && (
@@ -138,16 +160,15 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      {/* Sidebar */}
+      {/* Sidebar (Android Drawer Style) */}
       <motion.aside 
         initial={false}
         animate={{ 
-          width: isSidebarOpen ? 280 : (window.innerWidth < 768 ? 0 : 80),
-          x: isSidebarOpen ? 0 : (window.innerWidth < 768 ? -280 : 0)
+          width: isSidebarOpen ? 280 : 0,
+          x: isSidebarOpen ? 0 : -280
         }}
         className={cn(
-          "bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col z-50 shadow-2xl shadow-slate-200/50 dark:shadow-none h-full",
-          window.innerWidth < 768 ? "fixed left-0 top-0" : "relative"
+          "bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col z-50 shadow-2xl shadow-slate-200/50 dark:shadow-none h-full fixed left-0 top-0"
         )}
       >
         <div className="p-6 flex items-center justify-between">
@@ -256,7 +277,7 @@ export default function App() {
           <div className="flex items-center gap-4">
             <button 
               onClick={() => setIsSidebarOpen(true)}
-              className="md:hidden p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors text-slate-500"
+              className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors text-slate-500"
             >
               <Menu size={20} />
             </button>
@@ -266,64 +287,14 @@ export default function App() {
           </div>
           
           <div className="flex items-center gap-4">
-            <div className="relative group">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors" size={18} />
-              <input 
-                type="text" 
-                value={searchQuery}
-                onChange={(e) => handleSearch(e.target.value)}
-                onFocus={() => setIsSearchOpen(true)}
-                placeholder={t.search || "AI Search..."} 
-                className="pl-10 pr-4 py-2 bg-slate-100 dark:bg-slate-800 border-none rounded-2xl text-sm w-40 md:w-64 focus:ring-2 focus:ring-indigo-500/20 transition-all font-medium dark:text-white"
-              />
-              
-              <AnimatePresence>
-                {isSearchOpen && searchQuery && (
-                  <motion.div 
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 10 }}
-                    className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden z-50"
-                  >
-                    <div className="p-2 space-y-1">
-                      {isSearching ? (
-                        <div className="p-4 text-center">
-                          <Sparkles className="animate-spin mx-auto text-indigo-500 mb-2" size={20} />
-                          <p className="text-xs font-bold text-slate-400">AI is thinking...</p>
-                        </div>
-                      ) : aiSearchResults.length > 0 ? aiSearchResults.map((res, i) => (
-                        <button 
-                          key={i}
-                          onClick={() => {
-                            setIsSearchOpen(false);
-                            setSearchQuery('');
-                            setActiveModule(res.moduleId as AppModule);
-                            if (res.moduleId === 'settings') {
-                              setHighlightedSetting(res.title);
-                            } else {
-                              setHighlightedSetting(null);
-                            }
-                          }}
-                          className="w-full flex items-center gap-3 p-3 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl transition-colors text-left"
-                        >
-                          <div className={cn("p-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-indigo-500")}>
-                            <Zap size={16} />
-                          </div>
-                          <div>
-                            <p className="text-xs font-bold text-slate-800 dark:text-white">{res.title}</p>
-                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{res.type}</p>
-                          </div>
-                        </button>
-                      )) : (
-                        <div className="p-4 text-center">
-                          <p className="text-xs font-bold text-slate-400">No results found</p>
-                        </div>
-                      )}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
+            <button 
+              onClick={() => setIsSearchOpen(true)}
+              className="flex items-center gap-3 px-4 py-2 bg-slate-100 dark:bg-slate-800 border-none rounded-2xl text-sm w-40 md:w-64 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all font-medium text-slate-400"
+            >
+              <SearchIcon size={18} />
+              <span className="hidden md:inline">{t.search || "Search..."}</span>
+              <kbd className="hidden md:inline-flex ml-auto px-1.5 py-0.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded text-[10px] font-bold text-slate-500 shadow-sm">Ctrl K</kbd>
+            </button>
 
             {/* Quick Actions */}
             <div className="relative">
@@ -410,6 +381,34 @@ export default function App() {
             </motion.div>
           </AnimatePresence>
         </div>
+        {/* Bottom Navigation (Mobile Only) */}
+        <nav className="md:hidden h-20 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-t border-slate-200 dark:border-slate-800 flex items-center justify-around px-4 sticky bottom-0 z-40">
+          {[
+            { id: 'dashboard', name: 'Home', icon: Home },
+            { id: 'nirnay', name: 'Calendar', icon: CalendarIcon },
+            { id: 'search', name: 'Search', icon: SearchIcon, action: () => setIsSearchOpen(true) },
+            { id: 'apps', name: 'Apps', icon: LayoutGrid, action: () => setIsSidebarOpen(true) },
+            { id: 'settings', name: 'Settings', icon: SettingsIcon },
+          ].map((item) => (
+            <button
+              key={item.id}
+              onClick={() => {
+                if (item.action) {
+                  item.action();
+                } else {
+                  setActiveModule(item.id as AppModule);
+                }
+              }}
+              className={cn(
+                "flex flex-col items-center gap-1 transition-all",
+                activeModule === item.id ? "text-indigo-600 scale-110" : "text-slate-400"
+              )}
+            >
+              <item.icon size={24} />
+              <span className="text-[10px] font-black uppercase tracking-widest">{item.name}</span>
+            </button>
+          ))}
+        </nav>
       </main>
     </div>
   );

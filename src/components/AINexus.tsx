@@ -33,6 +33,8 @@ interface ChatSession {
   messages: Message[];
 }
 
+import { getAIResponse } from '../services/offlineAIService';
+
 export default function AINexus() {
   const [input, setInput] = useState('');
   
@@ -125,7 +127,7 @@ export default function AINexus() {
     }
   };
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (!input.trim()) return;
 
     const userMessage: Message = {
@@ -136,20 +138,31 @@ export default function AINexus() {
     };
 
     setMessages(prev => [...prev, userMessage]);
+    const currentInput = input;
     setInput('');
     setIsTyping(true);
 
-    // Simulate AI response
-    setTimeout(() => {
+    try {
+      const response = await getAIResponse(currentInput);
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: "I've analyzed your request. I can help you with that. Would you like me to proceed?",
+        content: response,
         timestamp: new Date()
       };
       setMessages(prev => [...prev, assistantMessage]);
+    } catch (error) {
+      console.error("AI Nexus Error:", error);
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: "I'm sorry, I encountered an error. Please try again later.",
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
       setIsTyping(false);
-    }, 1500);
+    }
   };
 
   const suggestions = [
